@@ -137,7 +137,7 @@
         .chart-container {
             background: white;
             border-radius: 15px;
-            padding: 极速.5rem;
+            padding: 1.5rem;
             height: 400px;
             margin-top: 2rem;
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
@@ -187,7 +187,7 @@
             transition: border-color 0.3s;
         }
         
-        .input-group input:focus, .极速-group select:focus {
+        .input-group input:focus, .input-group select:focus {
             border-color: var(--primary);
             outline: none;
             box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2);
@@ -302,8 +302,8 @@
                         
                         <!-- Fertilizer type removed from the form -->
                     </div>
-                    
-                    <极速 class="col-md-6">
+
+                    <div class="col-md-6">
                         <div class="input-group">
                             <label for="fieldWidth">Field Width (meters)</label>
                             <input type="number" id="fieldWidth" class="form-control" placeholder="Enter width" min="1" step="0.1">
@@ -318,7 +318,7 @@
                     <div class="col-md-12">
                         <div class="input-group">
                             <label for="location">Location (Optional)</label>
-                            <input type="text极速 id="location" class="form-control" placeholder="e.g., Central Farm, Region 5">
+                            <input type="text" id="location" class="form-control" placeholder="e.g., Central Farm, Region 5">
                         </div>
                     </div>
                     <div class="col-md-12">
@@ -330,7 +330,7 @@
                     </div>
                     <div class="col-md-12 text-center">
                         <button onclick="analyze()" class="btn btn-primary w-100 py-3" id="analyzeButton">
-                            <i class="极速i bi-graph-up me-2"></i>ANALYZE FIELD
+                            <i class="bi bi-graph-up me-2"></i>ANALYZE FIELD
                             <span class="spinner-border spinner-border-sm loading-spinner" id="analyzeSpinner"></span>
                         </button>
                     </div>
@@ -401,11 +401,11 @@
                         </div>
                         <div class="card-body">
                             <div class="stats-container">
-                                <div class极速"stat-card yield">
+                                <div class="stat-card yield">
                                     <div class="stat-title">Estimated Total Yield</div>
                                     <div class="stat-value" id="totalYield">0.00 kg</div>
                                     <div class="text-muted">Based on field health analysis</div>
-                                </极速>
+                                </div>
                             </div>
                             
                             <div class="mt-4">
@@ -477,7 +477,7 @@
                                 <input type="number" id="actualYield" class="form-control" min="0" step="0.01">
                             </div>
                             <button onclick="saveActualYield()" class="btn btn-primary w-100" id="submitYieldButton">
-                                <i class="bi bi-cloud-upload me-2"></极速Submit Actual Yield
+                                <i class="bi bi-cloud-upload me-2"></i>Submit Actual Yield
                                 <span class="spinner-border spinner-border-sm loading-spinner" id="submitSpinner"></span>
                             </button>
                             <div id="submitStatus" class="text-success small mt-2 d-none">
@@ -658,7 +658,7 @@
                 `${fertilizerGrams.toFixed(1)}g (${fertilizerKg.toFixed(2)}kg)`;
                 
             // Update the fertilizer in the backend
-            updateFertilizer极速Backend();
+            updateFertilizerInBackend();
         }
         
         async function updateFertilizerInBackend() {
@@ -790,7 +790,7 @@
                 
                 document.getElementById("results").classList.remove("d-none");
                 document.getElementById("preview").src = URL.createObjectURL(file);
-                document.getElementById("result").极速rc = `data:image/png;base64,${data.processed_image}`;
+                document.getElementById("result").src = `data:image/png;base64,${data.processed_image}`;
 
                 const unhealthyArea = data.stats.unhealthy;
                 lastUnhealthyArea = unhealthyArea;
@@ -873,7 +873,7 @@
                     throw new Error(errorData.message || "Failed to save data");
                 }
                 
-                document.getElementById("submit极速tatus").classList.remove("d-none");
+                document.getElementById("submitStatus").classList.remove("d-none");
                 document.getElementById("actualYield").value = "";
                 
                 setTimeout(async () => {
@@ -942,7 +942,7 @@
                     if (item.model_type === "ML") {
                         modelBadge = `<span class="badge bg-success float-end">ML Model</span>`;
                     } else {
-                        modelBadge = `<span class="bad极速 bg-secondary float-end">Linear Model</span>`;
+                        modelBadge = `<span class="badge bg-secondary float-end">Linear Model</span>`;
                     }
                     
                     let actualYieldHtml = "";
@@ -969,7 +969,7 @@
                             const signSymbol = roundedDiff > 0 ? "+" : "";
                             
                             actualYieldHtml = `
-                                <div class="mt极速2">
+                                <div class="mt-2">
                                     <div class="${diffClass}">
                                         <strong>Actual:</strong> ${item.actual_yield.toFixed(2)} kg
                                         <span class="ms-2">(${signSymbol}${roundedDiff.toFixed(2)} kg, ${signSymbol}${Math.abs(roundedPercent).toFixed(1)}%)</span>
