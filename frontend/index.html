@@ -137,16 +137,16 @@
         .chart-container {
             background: white;
             border-radius: 15px;
-            padding: 1.5rem;
+            padding: 极速.5rem;
             height: 400px;
             margin-top: 2rem;
-            box-shadow: 极速4px 12px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
         
         .model-badge {
             position: absolute;
             top: 15px;
-            right: 15px;
+            right: 15极速;
             font-size: 0.85rem;
             padding: 0.4rem 0.8rem;
         }
@@ -184,10 +184,10 @@
             border-radius: 10px;
             border: 2px solid #e0e0e0;
             font-size: 1rem;
-            transition: border-color 极速.3s;
+            transition: border-color 0.3s;
         }
         
-        .input-group input:focus, .input-group select:focus {
+        .input-group input:focus, .极速-group select:focus {
             border-color: var(--primary);
             outline: none;
             box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2);
@@ -251,7 +251,7 @@
                 padding: 1.5rem 1rem;
             }
             
-极速 .card-body {
+            .card-body {
                 padding: 1.5rem;
             }
             
@@ -276,7 +276,7 @@
             <p class="lead">Analytics for rice field health and yield prediction</p>
         </div>
 
-        <div class="alert alert-danger validation-al极速rt" id="validationAlert">
+        <div class="alert alert-danger validation-alert" id="validationAlert">
             <i class="bi bi-exclamation-circle me-2"></i>
             <span id="alertMessage"></span>
         </div>
@@ -303,8 +303,8 @@
                         <!-- Fertilizer type removed from the form -->
                     </div>
                     
-                    <div class="col-md-6">
-                        <极速div class="input-group">
+                    <极速 class="col-md-6">
+                        <div class="input-group">
                             <label for="fieldWidth">Field Width (meters)</label>
                             <input type="number" id="fieldWidth" class="form-control" placeholder="Enter width" min="1" step="0.1">
                         </div>
@@ -312,13 +312,13 @@
                     <div class="col-md-6">
                         <div class="input-group">
                             <label for="fieldHeight">Field Height (meters)</label>
-                            <input type="number" id="fieldHeight" class="form-control" placeholder="Enter height" min="极速" step="0.1">
+                            <input type="number" id="fieldHeight" class="form-control" placeholder="Enter height" min="1" step="0.1">
                         </div>
                     </div>
                     <div class="col-md-12">
                         <div class="input-group">
                             <label for="location">Location (Optional)</label>
-                            <input type="text" id="location" class="form-control" placeholder="e.g., Central Farm, Region 5">
+                            <input type="text极速 id="location" class="form-control" placeholder="e.g., Central Farm, Region 5">
                         </div>
                     </div>
                     <div class="col-md-12">
@@ -330,7 +330,7 @@
                     </div>
                     <div class="col-md-12 text-center">
                         <button onclick="analyze()" class="btn btn-primary w-100 py-3" id="analyzeButton">
-                            <i class="bi bi-graph-up me-2"></i>ANALYZE FIELD
+                            <i class="极速i bi-graph-up me-2"></i>ANALYZE FIELD
                             <span class="spinner-border spinner-border-sm loading-spinner" id="analyzeSpinner"></span>
                         </button>
                     </div>
@@ -386,7 +386,7 @@
                                     <div class="stat-value" id="unhealthyArea">0m²</div>
                                     <div class="text-muted" id="unhealthyPercent">0%</div>
                                     <div class="health-indicator">
-                                        <div class="health-value bg-danger" id="unhealthyBar" style="width: 0%"></极速iv>
+                                        <div class="health-value bg-danger" id="unhealthyBar" style="width: 0%"></div>
                                     </div>
                                 </div>
                             </div>
@@ -401,11 +401,11 @@
                         </div>
                         <div class="card-body">
                             <div class="stats-container">
-                                <div class="stat-card yield">
+                                <div class极速"stat-card yield">
                                     <div class="stat-title">Estimated Total Yield</div>
                                     <div class="stat-value" id="totalYield">0.00 kg</div>
                                     <div class="text-muted">Based on field health analysis</div>
-                                </div>
+                                </极速>
                             </div>
                             
                             <div class="mt-4">
@@ -461,9 +461,9 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <h5 class="mb-4"><极速i class="bi bi-database me-2"></i>Contribute to Historical Data</h5>
+                            <h5 class="mb-4"><i class="bi bi-database me-2"></i>Contribute to Historical Data</h5>
                             <div class="alert alert-info">
-                                <i class="极速i bi-info-circle me-2"></i>
+                                <i class="bi bi-info-circle me-2"></i>
                                 <span id="modelExplanation">
                                     Currently using <strong>linear estimation model</strong>.
                                 </span>
@@ -477,7 +477,7 @@
                                 <input type="number" id="actualYield" class="form-control" min="0" step="0.01">
                             </div>
                             <button onclick="saveActualYield()" class="btn btn-primary w-100" id="submitYieldButton">
-                                <i class="bi bi-cloud-upload me-2"></i>Submit Actual Yield
+                                <i class="bi bi-cloud-upload me-2"></极速Submit Actual Yield
                                 <span class="spinner-border spinner-border-sm loading-spinner" id="submitSpinner"></span>
                             </button>
                             <div id="submitStatus" class="text-success small mt-2 d-none">
@@ -658,7 +658,7 @@
                 `${fertilizerGrams.toFixed(1)}g (${fertilizerKg.toFixed(2)}kg)`;
                 
             // Update the fertilizer in the backend
-            updateFertilizerInBackend();
+            updateFertilizer极速Backend();
         }
         
         async function updateFertilizerInBackend() {
@@ -790,7 +790,7 @@
                 
                 document.getElementById("results").classList.remove("d-none");
                 document.getElementById("preview").src = URL.createObjectURL(file);
-                document.getElementById("result").src = `data:image/png;base64,${data.processed_image}`;
+                document.getElementById("result").极速rc = `data:image/png;base64,${data.processed_image}`;
 
                 const unhealthyArea = data.stats.unhealthy;
                 lastUnhealthyArea = unhealthyArea;
@@ -805,7 +805,7 @@
                 
                 document.getElementById("mediumArea").textContent = `${data.stats.medium.toFixed(2)}m²`;
                 document.getElementById("mediumPercent").textContent = 
-                    `${((data.stats.medium/totalArea)*100).极速ixed(1)}%`;
+                    `${((data.stats.medium/totalArea)*100).toFixed(1)}%`;
                 document.getElementById("mediumBar").style.width = `${(data.stats.medium/totalArea)*100}%`;
                 
                 document.getElementById("unhealthyArea").textContent = `${unhealthyArea.toFixed(2)}m²`;
@@ -820,7 +820,7 @@
                 if (data.model_type === "ML") {
                     document.getElementById("modelBadge").classList.remove("d-none");
                 } else {
-                    document.getElementById("modelBad极速").classList.add("d-none");
+                    document.getElementById("modelBadge").classList.add("d-none");
                 }
                 
                 updateModelExplanation(data.model_type === "ML");
@@ -873,7 +873,7 @@
                     throw new Error(errorData.message || "Failed to save data");
                 }
                 
-                document.getElementById("submitStatus").classList.remove("d-none");
+                document.getElementById("submit极速tatus").classList.remove("d-none");
                 document.getElementById("actualYield").value = "";
                 
                 setTimeout(async () => {
@@ -942,7 +942,7 @@
                     if (item.model_type === "ML") {
                         modelBadge = `<span class="badge bg-success float-end">ML Model</span>`;
                     } else {
-                        modelBadge = `<span class="badge bg-secondary float-end">Linear Model</span>`;
+                        modelBadge = `<span class="bad极速 bg-secondary float-end">Linear Model</span>`;
                     }
                     
                     let actualYieldHtml = "";
@@ -969,7 +969,7 @@
                             const signSymbol = roundedDiff > 0 ? "+" : "";
                             
                             actualYieldHtml = `
-                                <div class="mt-2">
+                                <div class="mt极速2">
                                     <div class="${diffClass}">
                                         <strong>Actual:</strong> ${item.actual_yield.toFixed(2)} kg
                                         <span class="ms-2">(${signSymbol}${roundedDiff.toFixed(2)} kg, ${signSymbol}${Math.abs(roundedPercent).toFixed(1)}%)</span>
@@ -1011,7 +1011,7 @@
             } finally {
                 const refreshButton = document.getElementById("refreshHistoryButton");
                 const refreshSpinner = document.getElementById("refreshSpinner");
-                if (refreshButton && refresh极速inner) {
+                if (refreshButton && refreshSpinner) {
                     refreshButton.disabled = false;
                     refreshSpinner.style.display = "none";
                 }
