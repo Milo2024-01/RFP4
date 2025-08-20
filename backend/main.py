@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Form, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 import numpy as np
 import cv2
@@ -87,14 +87,59 @@ FERTILIZER_EFFECTIVENESS = {
 
 # Determine the correct path for static files
 current_dir = pathlib.Path(__file__).parent
-frontend_path = current_dir.parent / "frontend"
+print(f"Current directory: {current_dir}")
 
-# Serve static files for frontend if the directory exists
-if frontend_path.exists():
-    app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
-    print(f"Serving static files from: {frontend_path}")
-else:
-    print(f"Frontend directory not found at: {frontend_path}")
+# Check multiple possible locations for frontend files
+frontend_paths = [
+    current_dir.parent / "frontend",  # ../frontend
+    current_dir / "frontend",         # ./frontend
+    pathlib.Path("/opt/render/project/src/frontend")  # Render's default path
+]
+
+served_static = False
+for frontend_path in frontend_paths:
+    if frontend_path.exists() and frontend_path.is_dir():
+        app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
+        print(f"Serving static files from: {frontend_path}")
+        served_static = True
+        break
+
+if not served_static:
+    print("Frontend directory not found in any expected location.")
+    # List available directories for debugging
+    print("Available directories:")
+    for path in frontend_paths:
+        print(f"  {path}: {'Exists' if path.exists() else 'Does not exist'}")
+    
+    # Create a simple root endpoint for debugging
+    @app.get("/")
+    async def read_root():
+        return {
+            "message": "API is running but frontend files not found",
+            "current_dir": str(current_dir),
+            "frontend_paths": [str(p) for p in frontend_paths]
+        }
+
+# Catch-all route to serve frontend for SPA routing
+@app.get("/{full_path:path}")
+async def catch_all(full_path: str):
+    # Check if the requested file exists in any frontend directory
+    for frontend_path in frontend_paths:
+        if frontend_path.exists():
+            file_path = frontend_path / full_path
+            if file_path.exists() and file_path.is_file():
+                return FileResponse(file_path)
+    
+    # If no file found, serve index.html for SPA routing
+    for frontend_path in frontend_paths:
+        index_path = frontend_path / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+    
+    return JSONResponse(
+        status_code=404,
+        content={"message": "Not found", "requested_path": full_path}
+    )
 
 # Initialize DB with retry logic
 async def init_db():
@@ -449,7 +494,7 @@ async def get_history(limit: int = Query(50, gt=0, le=100)):
             SELECT id, timestamp, location, predicted_yield, actual_yield, 
                    model_type, rice_variety, fertilizer_type
             FROM historical_data 
-            ORDER BY timestamp DESC
+            ORDER by timestamp DESC
             LIMIT :limit
         """
         rows = await database.fetch_all(query, {"limit": limit})
@@ -473,6 +518,15 @@ async def get_history(limit: int = Query(50, gt=0, le=100)):
 
 @app.on_event("startup")
 async def startup():
+    print("Starting application...")
+    print(f"Current directory: {pathlib.Path.cwd()}")
+    print(f"Script directory: {pathlib.Path(__file__).parent}")
+    
+    # List files for debugging
+    print("Current directory contents:")
+    for item in pathlib.Path('.').iterdir():
+        print(f"  {item.name} ({'dir' if item.is_dir() else 'file'})")
+    
     # Try to connect to database but don't crash if it fails
     db_connected = await init_db()
     
@@ -490,6 +544,8 @@ async def startup():
         asyncio.create_task(scheduler_task())
     else:
         print("Database not connected, skipping model training and scheduler")
+    
+    print("Application startup complete")
 
 @app.on_event("shutdown")
 async def shutdown():
