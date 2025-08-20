@@ -20,6 +20,7 @@ from typing import Optional
 from pydantic import BaseModel
 from datetime import datetime
 import pathlib
+from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 
 app = FastAPI()
 
@@ -39,13 +40,32 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # For Render PostgreSQL, add SSL requirement
-if DATABASE_URL and "render.com" in DATABASE_URL:
-    if "?" in DATABASE_URL:
-        DATABASE_URL += "&sslmode=require"
-    else:
-        DATABASE_URL += "?sslmode=require"
+if DATABASE_URL and ("render.com" in DATABASE_URL or "onrender.com" in DATABASE_URL):
+    # Parse the connection URL to properly handle SSL
+    parsed = urlparse(DATABASE_URL)
+    
+    # Extract query parameters
+    query_params = parse_qs(parsed.query)
+    
+    # Add or update sslmode parameter
+    query_params['sslmode'] = ['require']
+    
+    # Rebuild the URL with updated query
+    new_query = urlencode(query_params, doseq=True)
+    DATABASE_URL = urlunparse((
+        parsed.scheme,
+        parsed.netloc,
+        parsed.path,
+        parsed.params,
+        new_query,
+        parsed.fragment
+    ))
 
-database = Database(DATABASE_URL)
+# Create database with SSL for production
+if DATABASE_URL and ("render.com" in DATABASE_URL or "onrender.com" in DATABASE_URL):
+    database = Database(DATABASE_URL, ssl=True)
+else:
+    database = Database(DATABASE_URL)
 
 # Rice variety yield factors
 RICE_VARIETY_FACTORS = {
@@ -76,29 +96,47 @@ if frontend_path.exists():
 else:
     print(f"Frontend directory not found at: {frontend_path}")
 
-# Initialize DB
+# Initialize DB with retry logic
 async def init_db():
-    await database.connect()
-    # Create table if not exists
-    await database.execute(
-        """
-        CREATE TABLE IF NOT EXISTS historical_data (
-            id SERIAL PRIMARY KEY,
-            timestamp TIMESTAMPTZ DEFAULT NOW(),
-            width REAL,
-            height REAL,
-            healthy_area REAL,
-            medium_area REAL,
-            unhealthy_area REAL,
-            predicted_yield REAL,
-            actual_yield REAL,
-            location TEXT,
-            model_type TEXT,
-            rice_variety TEXT,
-            fertilizer_type TEXT
-        )
-        """
-    )
+    max_retries = 5
+    retry_delay = 2  # seconds
+    
+    for attempt in range(max_retries):
+        try:
+            await database.connect()
+            # Create table if not exists
+            await database.execute(
+                """
+                CREATE TABLE IF NOT EXISTS historical_data (
+                    id SERIAL PRIMARY KEY,
+                    timestamp TIMESTAMPTZ DEFAULT NOW(),
+                    width REAL,
+                    height REAL,
+                    healthy_area REAL,
+                    medium_area REAL,
+                    unhealthy_area REAL,
+                    predicted_yield REAL,
+                    actual_yield REAL,
+                    location TEXT,
+                    model_type TEXT,
+                    rice_variety TEXT,
+                    fertilizer_type TEXT
+                )
+                """
+            )
+            print("Database connected successfully")
+            return True
+        except Exception as e:
+            print(f"Database connection failed (attempt {attempt + 1}/{max_retries}): {str(e)}")
+            if attempt < max_retries - 1:
+                print(f"Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                print("Max retries exceeded. Database connection failed.")
+                # Don't crash the app if database connection fails
+                # The app can still work for image processing, just not save to DB
+                return False
 
 # Model training
 async def train_model():
@@ -235,6 +273,22 @@ def process_image(image_data: bytes, field_width_m: float, field_height_m: float
         print(f"Image processing error: {str(e)}")
         traceback.print_exc()
         return {"error": f"Image processing failed: {str(e)}"}
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    try:
+        # Try to execute a simple query
+        await database.execute("SELECT 1")
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"disconnected: {str(e)}"
+    
+    return {
+        "status": "ok",
+        "database": db_status,
+        "timestamp": datetime.now().isoformat()
+    }
 
 # Pydantic model for update fertilizer
 class UpdateFertilizerRequest(BaseModel):
@@ -419,7 +473,9 @@ async def get_history(limit: int = Query(50, gt=0, le=100)):
 
 @app.on_event("startup")
 async def startup():
-    await init_db()
+    # Try to connect to database but don't crash if it fails
+    db_connected = await init_db()
+    
     global model
     try:
         model = joblib.load('yield_model.pkl')
@@ -427,8 +483,13 @@ async def startup():
     except:
         model = None
         print("No trained model available, using linear model")
-    await train_model()
-    asyncio.create_task(scheduler_task())
+    
+    # Only start scheduler if database is connected
+    if db_connected:
+        await train_model()
+        asyncio.create_task(scheduler_task())
+    else:
+        print("Database not connected, skipping model training and scheduler")
 
 @app.on_event("shutdown")
 async def shutdown():
