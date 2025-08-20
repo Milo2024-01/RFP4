@@ -20,6 +20,8 @@ from pydantic import BaseModel
 from datetime import datetime
 import pathlib
 import ssl
+from urllib.parse import urlparse
+import asyncpg
 
 app = FastAPI()
 
@@ -31,21 +33,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# PostgreSQL configuration
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:mamerto@localhost:5432/rice_yield')
+# PostgreSQL configuration - Get from environment
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
 # Fix for Render's PostgreSQL URL format
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # For Render PostgreSQL, add SSL requirement
-ssl_context = ssl.create_default_context()
-if DATABASE_URL and ("render.com" in DATABASE_URL or "onrender.com" in DATABASE_URL):
+if DATABASE_URL and ("render.com" in DATABASE_URL or "digitalocean.com" in DATABASE_URL or "onrender.com" in DATABASE_URL):
+    # Parse the URL to extract components
+    parsed = urlparse(DATABASE_URL)
+    
+    # Create SSL context
+    ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
-    database = Database(DATABASE_URL, ssl=ssl_context)
+    
+    # Create connection string with SSL
+    ssl_database_url = f"postgresql://{parsed.username}:{parsed.password}@{parsed.hostname}:{parsed.port}{parsed.path}?sslmode=require"
+    database = Database(ssl_database_url)
 else:
-    database = Database(DATABASE_URL)
+    # Use local database without SSL
+    database = Database(DATABASE_URL if DATABASE_URL else 'postgresql://postgres:mamerto@localhost:5432/rice_yield')
 
 # Rice variety yield factors
 RICE_VARIETY_FACTORS = {
