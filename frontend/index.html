@@ -72,7 +72,7 @@
             object-fit: cover;
             border-radius: 10px;
             border: 3px solid white;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 8px rgba(0,0,0,0.1);
         }
         
         .stats-container {
@@ -146,7 +146,7 @@
         .model-badge {
             position: absolute;
             top: 15px;
-            right: 15;
+            right: 15px;
             font-size: 0.85rem;
             padding: 0.4rem 0.8rem;
         }
@@ -290,17 +290,18 @@
                     <div class="input-row">
                         <div class="input-group">
                             <label for="riceVariety">Rice Variety</label>
-                            <select id="riceVariety" class="form-control">
-                                <option value="Jasmine">Jasmine</option>
-                                <option value="Basmati">Basmati</option>
-                                <option value="Arborio">Arborio</option>
-                                <option value="Calrose">Calrose</option>
-                                <option value="Japonica">Japonica</option>
-                                <option value="Indica">Indica</option>
-                            </select>
+                            <input type="text" id="riceVariety" class="form-control" placeholder="Enter rice variety">
                         </div>
                         
-                        <!-- Fertilizer type removed from the form -->
+                        <div class="input-group">
+                            <label for="fertilizerTypeSelect">Fertilizer Type</label>
+                            <select id="fertilizerTypeSelect" class="form-control">
+                                <option value="Urea">Urea (Nitrogen)</option>
+                                <option value="DAP">DAP (Diammonium Phosphate)</option>
+                                <option value="NPK">NPK (Balanced)</option>
+                                <option value="Organic">Organic Compost</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="col-md-6">
@@ -355,7 +356,7 @@
                                     <h5 class="text-center mb-3">Analysis Result</h5>
                                     <div style="position: relative;">
                                         <img id="result" class="analysis-image">
-                                        <div id="modelBadge" class="model-badge badge bg-info d-none">
+                                        <div id="modelbadge" class="model-badge badge bg-info d-none">
                                             Using Machine Learning
                                         </div>
                                     </div>
@@ -432,7 +433,7 @@
                                 <div id="fertilizerChoices" class="fertilizer-choices">
                                     <h6><i class="bi bi-patch-question me-2"></i>Select Different Fertilizer</h6>
                                     <div class="input-group">
-                                        <select id="fertilizerTypeSelect" class="form-control">
+                                        <select id="fertilizerTypeSelectResults" class="form-control">
                                             <option value="Urea">Urea (Nitrogen)</option>
                                             <option value="DAP">DAP (Diammonium Phosphate)</option>
                                             <option value="NPK">NPK (Balanced)</option>
@@ -643,7 +644,7 @@
         
         // Update fertilizer type and amount
         function updateFertilizer() {
-            const fertilizerSelect = document.getElementById("fertilizerTypeSelect");
+            const fertilizerSelect = document.getElementById("fertilizerTypeSelectResults");
             const fertilizerType = fertilizerSelect.value;
             const fertilizerTypeText = fertilizerSelect.options[fertilizerSelect.selectedIndex].text;
             
@@ -716,6 +717,8 @@
             const height = parseFloat(document.getElementById("fieldHeight").value);
             const location = document.getElementById("location").value;
             const riceVariety = document.getElementById("riceVariety").value;
+            const fertilizerType = document.getElementById("fertilizerTypeSelect").value;
+            const fertilizerTypeText = document.getElementById("fertilizerTypeSelect").options[document.getElementById("fertilizerTypeSelect").selectedIndex].text;
             const FERTILIZER_RATE = 50;
             
             document.getElementById("validationAlert").style.display = "none";
@@ -738,14 +741,15 @@
                 showAlert("Please enter valid width and height values");
                 return;
             }
+            
+            if (!riceVariety) {
+                showAlert("Please enter a rice variety");
+                return;
+            }
 
             try {
                 analyzeButton.disabled = true;
                 analyzeSpinner.style.display = "inline-block";
-                
-                // Set default fertilizer type
-                const fertilizerType = "Urea";
-                const fertilizerTypeText = "Urea (Nitrogen)";
                 
                 // Store current values for later use
                 currentRiceVariety = riceVariety;
