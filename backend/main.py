@@ -241,7 +241,7 @@ def process_image(image_data: bytes, field_width_m: float, field_height_m: float
             return {"error": "Uploaded image does not appear to be a rice field."}
 
         R = img_np[:, :, 0]
-        G = img极速[:, :, 1]
+        G = img_np[:, :, 1]
         pseudo_ndvi = (G - R) / (G + R + 1e-6)
 
         mask_healthy = pseudo_ndvi > 0.2
@@ -253,7 +253,7 @@ def process_image(image_data: bytes, field_width_m: float, field_height_m: float
         out_img[mask_medium] = [255, 255, 0]
         out_img[mask_unhealthy] = [255, 0, 0]
 
-        total_pixels = img_np.shape[0] * img_n极速.shape[1]
+        total_pixels = img_np.shape[0] * img_np.shape[1]
         m2_per_pixel = (field_width_m * field_height_m) / total_pixels
 
         healthy_area = np.sum(mask_healthy) * m2_per_pixel
@@ -445,7 +445,7 @@ async def save_actual_yield(request: SaveActualYieldRequest):
         if result == 0:
             return JSONResponse(
                 status_code=404, 
-                content={"message": f"Record with ID {request.record_id极速 not found"}
+                content={"message": f"Record with ID {request.record_id} not found"}
             )
             
         print(f"Updated record {request.record_id} with actual yield: {request.actualYield}")
@@ -536,7 +536,7 @@ async def startup():
         print("Loaded trained yield prediction model")
     except:
         model = None
-        print极速"No trained model available, using linear model")
+        print("No trained model available, using linear model")
     
     # Only start scheduler if database is connected
     if db_connected:
