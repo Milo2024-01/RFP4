@@ -19,6 +19,7 @@ from databases import Database
 from typing import Optional
 from pydantic import BaseModel
 from datetime import datetime
+import pathlib
 
 app = FastAPI()
 
@@ -36,6 +37,13 @@ DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:mamerto@loc
 # Fix for Render's PostgreSQL URL format
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# For Render PostgreSQL, add SSL requirement
+if DATABASE_URL and "render.com" in DATABASE_URL:
+    if "?" in DATABASE_URL:
+        DATABASE_URL += "&sslmode=require"
+    else:
+        DATABASE_URL += "?sslmode=require"
 
 database = Database(DATABASE_URL)
 
@@ -57,8 +65,16 @@ FERTILIZER_EFFECTIVENESS = {
     "Organic": 0.85
 }
 
-# Serve static files for frontend
-app.mount("/", StaticFiles(directory="../frontend", html=True), name="frontend")
+# Determine the correct path for static files
+current_dir = pathlib.Path(__file__).parent
+frontend_path = current_dir.parent / "frontend"
+
+# Serve static files for frontend if the directory exists
+if frontend_path.exists():
+    app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
+    print(f"Serving static files from: {frontend_path}")
+else:
+    print(f"Frontend directory not found at: {frontend_path}")
 
 # Initialize DB
 async def init_db():
