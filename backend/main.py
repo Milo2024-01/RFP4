@@ -21,7 +21,6 @@ from datetime import datetime
 import pathlib
 import ssl
 from urllib.parse import urlparse
-import asyncpg
 
 app = FastAPI()
 
@@ -45,13 +44,11 @@ if DATABASE_URL and ("render.com" in DATABASE_URL or "digitalocean.com" in DATAB
     # Parse the URL to extract components
     parsed = urlparse(DATABASE_URL)
     
-    # Create SSL context
-    ssl_context = ssl.create_default_context()
-    ssl_context.check_hostname = False
-    ssl_context.verify_mode = ssl.CERT_NONE
+    # Extract port or use default (5432 for PostgreSQL)
+    port = parsed.port or 5432
     
     # Create connection string with SSL
-    ssl_database_url = f"postgresql://{parsed.username}:{parsed.password}@{parsed.hostname}:{parsed.port}{parsed.path}?sslmode=require"
+    ssl_database_url = f"postgresql://{parsed.username}:{parsed.password}@{parsed.hostname}:{port}{parsed.path}?sslmode=require"
     database = Database(ssl_database_url)
 else:
     # Use local database without SSL
