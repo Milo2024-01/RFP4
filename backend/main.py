@@ -20,7 +20,7 @@ from typing import Optional
 from pydantic import BaseModel
 from datetime import datetime
 import pathlib
-from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
+import ssl
 
 app = FastAPI()
 
@@ -32,7 +32,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# PostgreSQL configuration - use Render's environment variable
+# PostgreSQL configuration
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:mamerto@localhost:5432/rice_yield')
 
 # Fix for Render's PostgreSQL URL format
@@ -40,30 +40,11 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # For Render PostgreSQL, add SSL requirement
+ssl_context = ssl.create_default_context()
 if DATABASE_URL and ("render.com" in DATABASE_URL or "onrender.com" in DATABASE_URL):
-    # Parse the connection URL to properly handle SSL
-    parsed = urlparse(DATABASE_URL)
-    
-    # Extract query parameters
-    query_params = parse_qs(parsed.query)
-    
-    # Add or update sslmode parameter
-    query_params['sslmode'] = ['require']
-    
-    # Rebuild the URL with updated query
-    new_query = urlencode(query_params, doseq=True)
-    DATABASE_URL = urlunparse((
-        parsed.scheme,
-        parsed.netloc,
-        parsed.path,
-        parsed.params,
-        new_query,
-        parsed.fragment
-    ))
-
-# Create database with SSL for production
-if DATABASE_URL and ("render.com" in DATABASE_URL or "onrender.com" in DATABASE_URL):
-    database = Database(DATABASE_URL, ssl=True)
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    database = Database(DATABASE_URL, ssl=ssl_context)
 else:
     database = Database(DATABASE_URL)
 
@@ -72,7 +53,7 @@ RICE_VARIETY_FACTORS = {
     "Jasmine": 1.0,
     "Basmati": 0.95,
     "Arborio": 1.1,
-    "Calrose": 1.05,
+    "Calrose": .05,
     "Japonica": 0.98,
     "Indica": 1.02
 }
@@ -87,38 +68,17 @@ FERTILIZER_EFFECTIVENESS = {
 
 # Determine the correct path for static files
 current_dir = pathlib.Path(__file__).parent
-print(f"Current directory: {current_dir}")
+frontend_path = current_dir.parent / "frontend"
 
-# Check multiple possible locations for frontend files
-frontend_paths = [
-    current_dir.parent / "frontend",  # ../frontend
-    current_dir / "frontend",         # ./frontend
-    pathlib.Path("/opt/render/project/src/frontend")  # Render's default path
-]
-
-served_static = False
-for frontend_path in frontend_paths:
-    if frontend_path.exists() and frontend_path.is_dir():
-        app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
-        print(f"Serving static files from: {frontend_path}")
-        served_static = True
-        break
-
-if not served_static:
-    print("Frontend directory not found in any expected location.")
-    # List available directories for debugging
-    print("Available directories:")
-    for path in frontend_paths:
-        print(f"  {path}: {'Exists' if path.exists() else 'Does not exist'}")
+if frontend_path.exists() and frontend_path.is_dir():
+    app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
+    print(f"Serving static files from: {frontend_path}")
+else:
+    print("Frontend directory not found. API-only mode.")
     
-    # Create a simple root endpoint for debugging
     @app.get("/")
     async def read_root():
-        return {
-            "message": "API is running but frontend files not found",
-            "current_dir": str(current_dir),
-            "frontend_paths": [str(p) for p in frontend_paths]
-        }
+        return {"message": "API is running but frontend files not found"}
 
 # Initialize DB with retry logic
 async def init_db():
@@ -158,8 +118,6 @@ async def init_db():
                 retry_delay *= 2  # Exponential backoff
             else:
                 print("Max retries exceeded. Database connection failed.")
-                # Don't crash the app if database connection fails
-                # The app can still work for image processing, just not save to DB
                 return False
 
 # Model training
@@ -185,7 +143,7 @@ async def train_model():
         df.fillna({'variety_factor': 1.0, 'fertilizer_factor': 1.0}, inplace=True)
 
         X = df[['healthy_area', 'medium_area', 'unhealthy_area', 
-                'width', 'height', 'variety_factor', 'fertilizer_factor']]
+                'width', 'height', 'variety_factor', 'ferilizer_factor']]
         y = df['actual_yield']
 
         model = RandomForestRegressor(n_estimators=100, random_state=42)
@@ -200,13 +158,6 @@ async def train_model():
 
 # Load model if exists
 model = None
-
-# Scheduler task
-async def scheduler_task():
-    schedule.every().day.at("02:00").do(lambda: asyncio.run(train_model()))
-    while True:
-        schedule.run_pending()
-        await asyncio.sleep(60)
 
 # Image validation
 def is_valid_image_type(content_type: str, filename: str) -> bool:
@@ -277,9 +228,9 @@ def process_image(image_data: bytes, field_width_m: float, field_height_m: float
             base_yield = (healthy_area * 0.8) + (medium_area * 0.4) + (unhealthy_area * 0.1)
             yield_kg = base_yield * variety_factor * fertilizer_factor
 
-        output_pil = Image.fromarray(out_img.astype(np.uint8))
+        output_p = Image.fromarray(out_img.astype(np.uint8))
         buffered = io.BytesIO()
-        output_pil.save(buffered, format="PNG")
+        output_p.save(buffered, format="PNG")
         processed_image_b64 = base64.b64encode(buffered.getvalue()).decode()
 
         return {
@@ -437,7 +388,7 @@ async def save_actual_yield(request: SaveActualYieldRequest):
         """
         values = {
             "actual_yield": request.actualYield, 
-            "record极速": request.record_id
+            "record_id": request.record_id
         }
         
         result = await database.execute(query, values)
@@ -473,7 +424,7 @@ async def get_history(limit: int = Query(50, gt=0, le=100)):
             SELECT id, timestamp, location, predicted_yield, actual_yield, 
                    model_type, rice_variety, fertilizer_type
             FROM historical_data 
-            ORDER by timestamp DESC
+            ORDER BY timestamp DESC
             LIMIT :limit
         """
         rows = await database.fetch_all(query, {"limit": limit})
@@ -494,27 +445,6 @@ async def get_history(limit: int = Query(50, gt=0, le=100)):
         print(f"Error fetching history: {str(e)}")
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"message": str(e)})
-
-# Catch-all route to serve frontend for SPA routing
-@app.get("/{full_path:path}")
-async def catch_all(full_path: str):
-    # Check if the requested file exists in any frontend directory
-    for frontend_path in frontend_paths:
-        if frontend_path.exists():
-            file_path = frontend_path / full_path
-            if file_path.exists() and file_path.is_file():
-                return FileResponse(file_path)
-    
-    # If no file found, serve index.html for SPA routing
-    for frontend_path in frontend_paths:
-        index_path = frontend_path / "index.html"
-        if index_path.exists():
-            return FileResponse(index_path)
-    
-    return JSONResponse(
-        status_code=404,
-        content={"message": "Not found", "requested_path": full_path}
-    )
 
 @app.on_event("startup")
 async def startup():
@@ -541,9 +471,8 @@ async def startup():
     # Only start scheduler if database is connected
     if db_connected:
         await train_model()
-        asyncio.create_task(scheduler_task())
     else:
-        print("Database not connected, skipping model training and scheduler")
+        print("Database not connected, skipping model training")
     
     print("Application startup complete")
 
@@ -552,5 +481,5 @@ async def shutdown():
     await database.disconnect()
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
+    port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
