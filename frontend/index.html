@@ -140,7 +140,7 @@
             padding: 1.5rem;
             height: 400px;
             margin-top: 2rem;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            box-shadow: 极速4px 12px rgba(0,0,0,0.05);
         }
         
         .model-badge {
@@ -184,7 +184,7 @@
             border-radius: 10px;
             border: 2px solid #e0e0e0;
             font-size: 1rem;
-            transition: border-color 0.3s;
+            transition: border-color 极速.3s;
         }
         
         .input-group input:focus, .input-group select:focus {
@@ -251,7 +251,7 @@
                 padding: 1.5rem 1rem;
             }
             
-            .card-body {
+极速 .card-body {
                 padding: 1.5rem;
             }
             
@@ -276,7 +276,7 @@
             <p class="lead">Analytics for rice field health and yield prediction</p>
         </div>
 
-        <div class="alert alert-danger validation-alert" id="validationAlert">
+        <div class="alert alert-danger validation-al极速rt" id="validationAlert">
             <i class="bi bi-exclamation-circle me-2"></i>
             <span id="alertMessage"></span>
         </div>
@@ -304,7 +304,7 @@
                     </div>
                     
                     <div class="col-md-6">
-                        <div class="input-group">
+                        <极速div class="input-group">
                             <label for="fieldWidth">Field Width (meters)</label>
                             <input type="number" id="fieldWidth" class="form-control" placeholder="Enter width" min="1" step="0.1">
                         </div>
@@ -312,7 +312,7 @@
                     <div class="col-md-6">
                         <div class="input-group">
                             <label for="fieldHeight">Field Height (meters)</label>
-                            <input type="number" id="fieldHeight" class="form-control" placeholder="Enter height" min="1" step="0.1">
+                            <input type="number" id="fieldHeight" class="form-control" placeholder="Enter height" min="极速" step="0.1">
                         </div>
                     </div>
                     <div class="col-md-12">
@@ -386,7 +386,7 @@
                                     <div class="stat-value" id="unhealthyArea">0m²</div>
                                     <div class="text-muted" id="unhealthyPercent">0%</div>
                                     <div class="health-indicator">
-                                        <div class="health-value bg-danger" id="unhealthyBar" style="width: 0%"></div>
+                                        <div class="health-value bg-danger" id="unhealthyBar" style="width: 0%"></极速iv>
                                     </div>
                                 </div>
                             </div>
@@ -438,8 +438,9 @@
                                             <option value="NPK">NPK (Balanced)</option>
                                             <option value="Organic">Organic Compost</option>
                                         </select>
-                                        <button onclick="updateFertilizer()" class="btn btn-outline-primary mt-2">
+                                        <button onclick="updateFertilizer()" class="btn btn-outline-primary mt-2" id="updateFertilizerButton">
                                             <i class="bi bi-arrow-repeat me-1"></i>Update Fertilizer
+                                            <span class="spinner-border spinner-border-sm loading-spinner" id="updateFertilizerSpinner" style="display: none;"></span>
                                         </button>
                                     </div>
                                 </div>
@@ -460,9 +461,9 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <h5 class="mb-4"><i class="bi bi-database me-2"></i>Contribute to Historical Data</h5>
+                            <h5 class="mb-4"><极速i class="bi bi-database me-2"></i>Contribute to Historical Data</h5>
                             <div class="alert alert-info">
-                                <i class="bi bi-info-circle me-2"></i>
+                                <i class="极速i bi-info-circle me-2"></i>
                                 <span id="modelExplanation">
                                     Currently using <strong>linear estimation model</strong>.
                                 </span>
@@ -664,6 +665,12 @@
             if (!currentRecordId) return;
             
             try {
+                const updateButton = document.getElementById("updateFertilizerButton");
+                const updateSpinner = document.getElementById("updateFertilizerSpinner");
+                
+                updateButton.disabled = true;
+                updateSpinner.style.display = "inline-block";
+                
                 const response = await fetch("/update_fertilizer", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
@@ -693,6 +700,13 @@
             } catch (error) {
                 console.error("Error updating fertilizer:", error);
                 showAlert("Failed to update fertilizer: " + error.message);
+            } finally {
+                const updateButton = document.getElementById("updateFertilizerButton");
+                const updateSpinner = document.getElementById("updateFertilizerSpinner");
+                if (updateButton && updateSpinner) {
+                    updateButton.disabled = false;
+                    updateSpinner.style.display = "none";
+                }
             }
         }
         
@@ -791,7 +805,7 @@
                 
                 document.getElementById("mediumArea").textContent = `${data.stats.medium.toFixed(2)}m²`;
                 document.getElementById("mediumPercent").textContent = 
-                    `${((data.stats.medium/totalArea)*100).toFixed(1)}%`;
+                    `${((data.stats.medium/totalArea)*100).极速ixed(1)}%`;
                 document.getElementById("mediumBar").style.width = `${(data.stats.medium/totalArea)*100}%`;
                 
                 document.getElementById("unhealthyArea").textContent = `${unhealthyArea.toFixed(2)}m²`;
@@ -806,7 +820,7 @@
                 if (data.model_type === "ML") {
                     document.getElementById("modelBadge").classList.remove("d-none");
                 } else {
-                    document.getElementById("modelBadge").classList.add("d-none");
+                    document.getElementById("modelBad极速").classList.add("d-none");
                 }
                 
                 updateModelExplanation(data.model_type === "ML");
@@ -997,7 +1011,7 @@
             } finally {
                 const refreshButton = document.getElementById("refreshHistoryButton");
                 const refreshSpinner = document.getElementById("refreshSpinner");
-                if (refreshButton && refreshSpinner) {
+                if (refreshButton && refresh极速inner) {
                     refreshButton.disabled = false;
                     refreshSpinner.style.display = "none";
                 }
