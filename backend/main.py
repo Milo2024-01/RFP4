@@ -10,7 +10,6 @@ import base64
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 import joblib
-import schedule
 import asyncio
 import traceback
 import uvicorn
@@ -53,7 +52,7 @@ RICE_VARIETY_FACTORS = {
     "Jasmine": 1.0,
     "Basmati": 0.95,
     "Arborio": 1.1,
-    "Calrose": .05,
+    "Calrose": 1.05,
     "Japonica": 0.98,
     "Indica": 1.02
 }
@@ -65,20 +64,6 @@ FERTILIZER_EFFECTIVENESS = {
     "NPK": 1.15,
     "Organic": 0.85
 }
-
-# Determine the correct path for static files
-current_dir = pathlib.Path(__file__).parent
-frontend_path = current_dir.parent / "frontend"
-
-if frontend_path.exists() and frontend_path.is_dir():
-    app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
-    print(f"Serving static files from: {frontend_path}")
-else:
-    print("Frontend directory not found. API-only mode.")
-    
-    @app.get("/")
-    async def read_root():
-        return {"message": "API is running but frontend files not found"}
 
 # Initialize DB with retry logic
 async def init_db():
@@ -143,7 +128,7 @@ async def train_model():
         df.fillna({'variety_factor': 1.0, 'fertilizer_factor': 1.0}, inplace=True)
 
         X = df[['healthy_area', 'medium_area', 'unhealthy_area', 
-                'width', 'height', 'variety_factor', 'ferilizer_factor']]
+                'width', 'height', 'variety_factor', 'fertilizer_factor']]
         y = df['actual_yield']
 
         model = RandomForestRegressor(n_estimators=100, random_state=42)
@@ -228,9 +213,9 @@ def process_image(image_data: bytes, field_width_m: float, field_height_m: float
             base_yield = (healthy_area * 0.8) + (medium_area * 0.4) + (unhealthy_area * 0.1)
             yield_kg = base_yield * variety_factor * fertilizer_factor
 
-        output_p = Image.fromarray(out_img.astype(np.uint8))
+        output_pil = Image.fromarray(out_img.astype(np.uint8))
         buffered = io.BytesIO()
-        output_p.save(buffered, format="PNG")
+        output_pil.save(buffered, format="PNG")
         processed_image_b64 = base64.b64encode(buffered.getvalue()).decode()
 
         return {
@@ -442,9 +427,35 @@ async def get_history(limit: int = Query(50, gt=0, le=100)):
             })
         return history
     except Exception as e:
-        print(f"Error fetching history: {str(e)}")
+        print(f"Error fetching history: {e}")
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"message": str(e)})
+
+# Serve static files for frontend (mounted after API routes to avoid conflicts)
+frontend_path = pathlib.Path("../frontend")
+if frontend_path.exists() and frontend_path.is_dir():
+    app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
+    print(f"Serving static files from: {frontend_path}")
+else:
+    print("Frontend directory not found. API-only mode.")
+    
+    @app.get("/")
+    async def read_root():
+        return {"message": "API is running but frontend files not found"}
+
+# Catch-all route for SPA routing
+@app.get("/{full_path:path}")
+async def catch_all(full_path: str):
+    # If we can't find the file, serve index.html for SPA routing
+    if frontend_path.exists():
+        index_path = frontend_path / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+    
+    return JSONResponse(
+        status_code=404,
+        content={"message": "Not found", "requested_path": full_path}
+    )
 
 @app.on_event("startup")
 async def startup():
