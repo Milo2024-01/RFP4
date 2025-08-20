@@ -41,15 +41,18 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
 
 # For Render PostgreSQL, add SSL requirement
 if DATABASE_URL and ("render.com" in DATABASE_URL or "digitalocean.com" in DATABASE_URL or "onrender.com" in DATABASE_URL):
-    # Parse the URL to extract components
-    parsed = urlparse(DATABASE_URL)
+    # Add sslmode=require to the connection string
+    if 'sslmode' not in DATABASE_URL:
+        if '?' in DATABASE_URL:
+            DATABASE_URL += '&sslmode=require'
+        else:
+            DATABASE_URL += '?sslmode=require'
     
-    # Extract port or use default (5432 for PostgreSQL)
-    port = parsed.port or 5432
-    
-    # Create connection string with SSL
-    ssl_database_url = f"postgresql://{parsed.username}:{parsed.password}@{parsed.hostname}:{port}{parsed.path}?sslmode=require"
-    database = Database(ssl_database_url)
+    # Create SSL context for databases library
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    database = Database(DATABASE_URL, ssl=ssl_context)
 else:
     # Use local database without SSL
     database = Database(DATABASE_URL if DATABASE_URL else 'postgresql://postgres:mamerto@localhost:5432/rice_yield')
@@ -295,30 +298,35 @@ async def analyze(
         if "error" in result:
             return JSONResponse(status_code=400, content={"error": result["error"]})
 
-        # Save to DB
-        query = """
-            INSERT INTO historical_data 
-            (width, height, healthy_area, medium_area, unhealthy_area, 
-             predicted_yield, location, model_type, rice_variety, fertilizer_type)
-            VALUES (:width, :height, :healthy, :medium, :unhealthy, 
-                    :yield, :location, :model_type, :rice_variety, :fertilizer_type)
-            RETURNING id
-        """
-        values = {
-            "width": width,
-            "height": height,
-            "healthy": result["stats"]["healthy"],
-            "medium": result["stats"]["medium"],
-            "unhealthy": result["stats"]["unhealthy"],
-            "yield": result["estimated_yield"],
-            "location": location,
-            "model_type": result["model_type"],
-            "rice_variety": rice_variety,
-            "fertilizer_type": fertilizer_type
-        }
+        # Save to DB if connected
+        if database.is_connected:
+            query = """
+                INSERT INTO historical_data 
+                (width, height, healthy_area, medium_area, unhealthy_area, 
+                 predicted_yield, location, model_type, rice_variety, fertilizer_type)
+                VALUES (:width, :height, :healthy, :medium, :unhealthy, 
+                        :yield, :location, :model_type, :rice_variety, :fertilizer_type)
+                RETURNING id
+            """
+            values = {
+                "width": width,
+                "height": height,
+                "healthy": result["stats"]["healthy"],
+                "medium": result["stats"]["medium"],
+                "unhealthy": result["stats"]["unhealthy"],
+                "yield": result["estimated_yield"],
+                "location": location,
+                "model_type": result["model_type"],
+                "rice_variety": rice_variety,
+                "fertilizer_type": fertilizer_type
+            }
 
-        record_id = await database.execute(query, values)
-        result["record_id"] = record_id
+            record_id = await database.execute(query, values)
+            result["record_id"] = record_id
+        else:
+            result["record_id"] = None
+            result["db_warning"] = "Database not connected, record not saved"
+            
         return JSONResponse(content=result)
     except Exception as e:
         print(f"Error in analyze endpoint: {str(e)}")
@@ -345,25 +353,29 @@ async def update_fertilizer(request: UpdateFertilizerRequest):
             base_yield = (request.healthy_area * 0.8) + (request.medium_area * 0.4) + (request.unhealthy_area * 0.1)
             yield_kg = base_yield * variety_factor * fertilizer_factor
 
-        query = """
-            UPDATE historical_data 
-            SET fertilizer_type = :fertilizer_type, 
-                predicted_yield = :predicted_yield,
-                model_type = :model_type
-            WHERE id = :record_id
-        """
-        values = {
-            "fertilizer_type": request.fertilizer_type,
-            "predicted_yield": yield_kg,
-            "model_type": model_type,
-            "record_id": request.record_id
-        }
-        await database.execute(query, values)
+        # Update DB if connected
+        if database.is_connected:
+            query = """
+                UPDATE historical_data 
+                SET fertilizer_type = :fertilizer_type, 
+                    predicted_yield = :predicted_yield,
+                    model_type = :model_type
+                WHERE id = :record_id
+            """
+            values = {
+                "fertilizer_type": request.fertilizer_type,
+                "predicted_yield": yield_kg,
+                "model_type": model_type,
+                "record_id": request.record_id
+            }
+            await database.execute(query, values)
+            
         return JSONResponse(content={
             "status": "success",
             "new_yield": yield_kg,
             "new_fertilizer": request.fertilizer_type,
-            "model_type": model_type
+            "model_type": model_type,
+            "db_connected": database.is_connected
         })
     except Exception as e:
         print(f"Error updating fertilizer: {str(e)}")
@@ -373,6 +385,12 @@ async def update_fertilizer(request: UpdateFertilizerRequest):
 @app.post("/save_actual_yield")
 async def save_actual_yield(request: SaveActualYieldRequest):
     try:
+        if not database.is_connected:
+            return JSONResponse(
+                status_code=500,
+                content={"message": "Database not connected, cannot save actual yield"}
+            )
+            
         query = """
             UPDATE historical_data 
             SET actual_yield = :actual_yield
@@ -412,6 +430,12 @@ async def save_actual_yield(request: SaveActualYieldRequest):
 @app.get("/history")
 async def get_history(limit: int = Query(50, gt=0, le=100)):
     try:
+        if not database.is_connected:
+            return JSONResponse(
+                status_code=500,
+                content={"message": "Database not connected, cannot fetch history"}
+            )
+            
         query = """
             SELECT id, timestamp, location, predicted_yield, actual_yield, 
                    model_type, rice_variety, fertilizer_type
@@ -496,7 +520,8 @@ async def startup():
 
 @app.on_event("shutdown")
 async def shutdown():
-    await database.disconnect()
+    if database.is_connected:
+        await database.disconnect()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
