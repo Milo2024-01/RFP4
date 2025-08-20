@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rice Field Health Analyzer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #28a745;
+            --secondary: #6c757d;
+            --success: #198754;
+            --info: #0dcaf0;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --light: #f8f9fa;
+            --dark: #212529;
+        }
+        
+        body { 
+            background: linear-gradient(to bottom, #e6f4ea, #c8e6c9);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .container {
+            max-width: 1400px;
+            padding: 2rem;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary), #1e7e34);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            color: white;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border: none;
+            margin-bottom: 2rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+            overflow: hidden;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 20px rgba(0,0,0,0.15);
+        }
+        
+        .card-header {
+            background: white;
+            border-bottom: 2px solid var(--light);
+            font-weight: 600;
+            font-size: 1.2rem;
+            padding: 1.2rem 1.5rem;
+        }
+        
+        .card-body {
+            padding: 2rem;
+        }
+        
+        .analysis-image {
+            width: 100%;
+            height: 350px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 3px solid white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: scale(1.03);
+        }
+        
+        .stat-card.healthy { border-left: 5px solid var(--success); }
+        .stat-card.medium { border-left: 5px solid var(--warning); }
+        .stat-card.unhealthy { border-left: 5px solid var(--danger); }
+        .stat-card.yield { border-left: 5px solid var(--primary); }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0.5rem 0;
+        }
+        
+        .stat-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--secondary);
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            border: none;
+            padding: 0.8rem 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+        
+        .validation-alert {
+            display: none;
+            margin-bottom: 1.5rem;
+            border-radius: 10px;
+            padding: 1.2rem;
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            height: 400px;
+            margin-top: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        
+        .model-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 0.85rem;
+            padding: 0.4rem 0.8rem;
+        }
+        
+        .history-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.2rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+            border-left: 4px solid var(--primary);
+        }
+        
+        .loading-spinner {
+            display: none;
+            width: 2rem;
+            height: 2rem;
+            margin-left: 10px;
+        }
+        
+        .input-group {
+            margin-bottom: 1.2rem;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--dark);
+        }
+        
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 0.8rem;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        .input-group input:focus, .input-group select:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2);
+        }
+        
+        .health-indicator {
+            height: 10px;
+            border-radius: 5px;
+            margin-top: 0.5rem;
+            background: linear-gradient(to right, var(--danger), var(--warning), var(--success));
+        }
+        
+        .health-value {
+            height: 100%;
+            border-radius: 5px;
+        }
+        
+        .exact-match {
+            color: #198754;
+            font-weight: bold;
+        }
+        
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.2rem;
+        }
+        
+        .fertilizer-type-display {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            padding: 8px 12px;
+            background-color: #e8f5e9;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        
+        .fertilizer-icon {
+            font-size: 1.2rem;
+            color: #388e3c;
+        }
+        
+        .fertilizer-choices {
+            display: none;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .header {
+                padding: 1.5rem 1rem;
+            }
+            
+            .card-body {
+                padding: 1.5rem;
+            }
+            
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .analysis-image {
+                height: 250px;
+            }
+            
+            .input-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="display-4 mb-3">🌾 Rice Field Prediction System</h1>
+            <p class="lead">Analytics for rice field health and yield prediction</p>
+        </div>
+
+        <div class="alert alert-danger validation-alert" id="validationAlert">
+            <i class="bi bi-exclamation-circle me-2"></i>
+            <span id="alertMessage"></span>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-upload me-2"></i>Upload Field Information
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="riceVariety">Rice Variety</label>
+                            <select id="riceVariety" class="form-control">
+                                <option value="Jasmine">Jasmine</option>
+                                <option value="Basmati">Basmati</option>
+                                <option value="Arborio">Arborio</option>
+                                <option value="Calrose">Calrose</option>
+                                <option value="Japonica">Japonica</option>
+                                <option value="Indica">Indica</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Fertilizer type removed from the form -->
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <label for="fieldWidth">Field Width (meters)</label>
+                            <input type="number" id="fieldWidth" class="form-control" placeholder="Enter width" min="1" step="0.1">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <label for="fieldHeight">Field Height (meters)</label>
+                            <input type="number" id="fieldHeight" class="form-control" placeholder="Enter height" min="1" step="0.1">
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <div class="input-group">
+                            <label for="location">Location (Optional)</label>
+                            <input type="text" id="location" class="form-control" placeholder="e.g., Central Farm, Region 5">
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <div class="input-group">
+                            <label for="imageInput">Upload Field Image</label>
+                            <input type="file" id="imageInput" class="form-control" accept=".jpg,.jpeg,.png">
+                            <div class="form-text mt-2">Only JPG, JPEG, and PNG files are accepted</div>
+                        </div>
+                    </div>
+                    <div class="col-md-12 text-center">
+                        <button onclick="analyze()" class="btn btn-primary w-100 py-3" id="analyzeButton">
+                            <i class="bi bi-graph-up me-2"></i>ANALYZE FIELD
+                            <span class="spinner-border spinner-border-sm loading-spinner" id="analyzeSpinner"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="results" class="d-none">
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-image me-2"></i>Image Analysis
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-4">
+                                    <h5 class="text-center mb-3">Original Image</h5>
+                                    <img id="preview" class="analysis-image">
+                                </div>
+                                <div class="col-md-6 mb-4">
+                                    <h5 class="text-center mb-3">Analysis Result</h5>
+                                    <div style="position: relative;">
+                                        <img id="result" class="analysis-image">
+                                        <div id="modelBadge" class="model-badge badge bg-info d-none">
+                                            Using Machine Learning
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="stats-container">
+                                <div class="stat-card healthy">
+                                    <div class="stat-title">Healthy Area</div>
+                                    <div class="stat-value" id="healthyArea">0m²</div>
+                                    <div class="text-muted" id="healthyPercent">0%</div>
+                                    <div class="health-indicator">
+                                        <div class="health-value bg-success" id="healthyBar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="stat-card medium">
+                                    <div class="stat-title">Medium Area</div>
+                                    <div class="stat-value" id="mediumArea">0m²</div>
+                                    <div class="text-muted" id="mediumPercent">0%</div>
+                                    <div class="health-indicator">
+                                        <div class="health-value bg-warning" id="mediumBar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="stat-card unhealthy">
+                                    <div class="stat-title">Unhealthy Area</div>
+                                    <div class="stat-value" id="unhealthyArea">0m²</div>
+                                    <div class="text-muted" id="unhealthyPercent">0%</div>
+                                    <div class="health-indicator">
+                                        <div class="health-value bg-danger" id="unhealthyBar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-bar-chart-line me-2"></i>Yield Analysis
+                        </div>
+                        <div class="card-body">
+                            <div class="stats-container">
+                                <div class="stat-card yield">
+                                    <div class="stat-title">Estimated Total Yield</div>
+                                    <div class="stat-value" id="totalYield">0.00 kg</div>
+                                    <div class="text-muted">Based on field health analysis</div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5>Fertilizer Recommendation</h5>
+                                    <i class="bi bi-flower3 text-danger" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <div class="alert alert-light">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Unhealthy Area Fertilizer Needed:</span>
+                                        <strong id="totalFertilizer">0g (0.00kg)</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mt-2">
+                                        <span>Fertilizer Type:</span>
+                                        <div id="fertilizerTypeDisplay" class="fertilizer-type-display">
+                                            <i class="bi bi-flower1 fertilizer-icon"></i>
+                                            <span id="fertilizerTypeText">None selected</span>
+                                        </div>
+                                    </div>
+                                    <div class="text-muted small mt-2">Calculated at 50g/m² standard rate</div>
+                                </div>
+                                
+                                <!-- Fertilizer choices section (only shown after analysis) -->
+                                <div id="fertilizerChoices" class="fertilizer-choices">
+                                    <h6><i class="bi bi-patch-question me-2"></i>Select Different Fertilizer</h6>
+                                    <div class="input-group">
+                                        <select id="fertilizerTypeSelect" class="form-control">
+                                            <option value="Urea">Urea (Nitrogen)</option>
+                                            <option value="DAP">DAP (Diammonium Phosphate)</option>
+                                            <option value="NPK">NPK (Balanced)</option>
+                                            <option value="Organic">Organic Compost</option>
+                                        </select>
+                                        <button onclick="updateFertilizer()" class="btn btn-outline-primary mt-2">
+                                            <i class="bi bi-arrow-repeat me-1"></i>Update Fertilizer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="chart-container">
+                                <canvas id="yieldChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <i class="bi bi-clock-history me-2"></i>Historical Data & Prediction Trends
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="mb-4"><i class="bi bi-database me-2"></i>Contribute to Historical Data</h5>
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <span id="modelExplanation">
+                                    Currently using <strong>linear estimation model</strong>.
+                                </span>
+                                <span id="mlExplanation" class="d-none">
+                                    Currently using <strong class="text-success">machine learning model</strong>.
+                                </span>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label">Actual Harvest Yield (kg)</label>
+                                <input type="number" id="actualYield" class="form-control" min="0" step="0.01">
+                            </div>
+                            <button onclick="saveActualYield()" class="btn btn-primary w-100" id="submitYieldButton">
+                                <i class="bi bi-cloud-upload me-2"></i>Submit Actual Yield
+                                <span class="spinner-border spinner-border-sm loading-spinner" id="submitSpinner"></span>
+                            </button>
+                            <div id="submitStatus" class="text-success small mt-2 d-none">
+                                <i class="bi bi-check-circle me-1"></i>Thank you for your contribution!
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h5 class="mb-4"><i class="bi bi-graph-up me-2"></i>Prediction History</h5>
+                            <div id="predictionHistory" style="max-height: 300px; overflow-y: auto;">
+                                <p class="text-center text-muted my-4" id="emptyHistory">
+                                    <i class="bi bi-clock-history"></i><br>
+                                    No historical predictions yet
+                                </p>
+                            </div>
+                            <button onclick="loadPredictionHistory()" class="btn btn-outline-secondary w-100 mt-3" id="refreshHistoryButton">
+                                <i class="bi bi-arrow-repeat me-2"></i>Refresh History
+                                <span class="spinner-border spinner-border-sm loading-spinner" id="refreshSpinner"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentRecordId = null;
+        let yieldChart = null;
+        let lastUnhealthyArea = 0;
+        let currentRiceVariety = "";
+        let currentFertilizerType = "";
+        
+        // Initialize Chart.js
+        function initChart() {
+            const ctx = document.getElementById('yieldChart').getContext('2d');
+            yieldChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Predicted Yield',
+                            data: [],
+                            borderColor: '#28a745',
+                            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                            borderWidth: 3,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#28a745',
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Actual Yield',
+                            data: [],
+                            borderColor: '#0dcaf0',
+                            backgroundColor: 'rgba(13, 202, 240, 0.1)',
+                            borderWidth: 3,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#0dcaf0',
+                            borderDash: [5, 5],
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    size: 13
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Yield Prediction Trends Over Time',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                            padding: 12,
+                            titleFont: {
+                                size: 14
+                            },
+                            bodyFont: {
+                                size: 13
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Date',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Yield (kg)',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    hover: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                }
+            });
+        }
+        
+        // Update chart with historical data
+        function updateChart(history) {
+            if (!yieldChart) return;
+            
+            const labels = [];
+            const predictedData = [];
+            const actualData = [];
+            
+            // Process history data
+            history.forEach(item => {
+                const date = new Date(item.timestamp);
+                const formattedDate = `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear()}`;
+                labels.push(formattedDate);
+                predictedData.push(item.predicted_yield);
+                actualData.push(item.actual_yield || null);
+            });
+            
+            // Update chart data
+            yieldChart.data.labels = labels;
+            yieldChart.data.datasets[0].data = predictedData;
+            yieldChart.data.datasets[1].data = actualData;
+            
+            yieldChart.update();
+        }
+        
+        // Update fertilizer type and amount
+        function updateFertilizer() {
+            const fertilizerSelect = document.getElementById("fertilizerTypeSelect");
+            const fertilizerType = fertilizerSelect.value;
+            const fertilizerTypeText = fertilizerSelect.options[fertilizerSelect.selectedIndex].text;
+            
+            document.getElementById("fertilizerTypeText").textContent = fertilizerTypeText;
+            currentFertilizerType = fertilizerType;
+            
+            const FERTILIZER_RATE = 50;
+            const fertilizerGrams = lastUnhealthyArea * FERTILIZER_RATE;
+            const fertilizerKg = fertilizerGrams / 1000;
+            
+            document.getElementById("totalFertilizer").textContent = 
+                `${fertilizerGrams.toFixed(1)}g (${fertilizerKg.toFixed(2)}kg)`;
+                
+            // Update the fertilizer in the backend
+            updateFertilizerInBackend();
+        }
+        
+        async function updateFertilizerInBackend() {
+            if (!currentRecordId) return;
+            
+            try {
+                const response = await fetch("/update_fertilizer", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        record_id: currentRecordId,
+                        fertilizer_type: currentFertilizerType,
+                        rice_variety: currentRiceVariety,
+                        healthy_area: parseFloat(document.getElementById("healthyArea").textContent.replace("m²", "")),
+                        medium_area: parseFloat(document.getElementById("mediumArea").textContent.replace("m²", "")),
+                        unhealthy_area: parseFloat(document.getElementById("unhealthyArea").textContent.replace("m²", "")),
+                        width: parseFloat(document.getElementById("fieldWidth").value),
+                        height: parseFloat(document.getElementById("fieldHeight").value)
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || "Failed to update fertilizer");
+                }
+                
+                const data = await response.json();
+                document.getElementById("totalYield").textContent = `${data.new_yield.toFixed(2)} kg`;
+                
+                // Update model explanation if needed
+                updateModelExplanation(data.model_type === "ML");
+                
+            } catch (error) {
+                console.error("Error updating fertilizer:", error);
+                showAlert("Failed to update fertilizer: " + error.message);
+            }
+        }
+        
+        async function analyze() {
+            const file = document.getElementById("imageInput").files[0];
+            const width = parseFloat(document.getElementById("fieldWidth").value);
+            const height = parseFloat(document.getElementById("fieldHeight").value);
+            const location = document.getElementById("location").value;
+            const riceVariety = document.getElementById("riceVariety").value;
+            const FERTILIZER_RATE = 50;
+            
+            document.getElementById("validationAlert").style.display = "none";
+            document.getElementById("submitStatus").classList.add("d-none");
+            const analyzeButton = document.getElementById("analyzeButton");
+            const analyzeSpinner = document.getElementById("analyzeSpinner");
+            
+            if (!file) {
+                showAlert("Please upload an image first");
+                return;
+            }
+            
+            const validTypes = ["image/jpeg", "image/jpg", "image/png"];
+            if (!validTypes.includes(file.type.toLowerCase())) {
+                showAlert("Only JPG, JPEG, and PNG files are allowed");
+                return;
+            }
+            
+            if (isNaN(width) || width <= 0 || isNaN(height) || height <= 0) {
+                showAlert("Please enter valid width and height values");
+                return;
+            }
+
+            try {
+                analyzeButton.disabled = true;
+                analyzeSpinner.style.display = "inline-block";
+                
+                // Set default fertilizer type
+                const fertilizerType = "Urea";
+                const fertilizerTypeText = "Urea (Nitrogen)";
+                
+                // Store current values for later use
+                currentRiceVariety = riceVariety;
+                currentFertilizerType = fertilizerType;
+                
+                // Set the fertilizer type display
+                document.getElementById("fertilizerTypeText").textContent = fertilizerTypeText;
+                
+                // Show fertilizer choices after analysis
+                document.getElementById("fertilizerChoices").style.display = "block";
+                
+                const formData = new FormData();
+                formData.append("image", file);
+                formData.append("width", width);
+                formData.append("height", height);
+                formData.append("rice_variety", riceVariety);
+                formData.append("fertilizer_type", fertilizerType);
+                if (location) formData.append("location", location);
+
+                const response = await fetch("/analyze", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    let errorMsg = "Analysis failed";
+                    try {
+                        const errorData = await response.json();
+                        errorMsg = errorData.error || errorData.message || errorMsg;
+                    } catch (e) {
+                        errorMsg = `${response.status} ${response.statusText}`;
+                    }
+                    throw new Error(errorMsg);
+                }
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    showAlert(data.error);
+                    return;
+                }
+                
+                document.getElementById("results").classList.remove("d-none");
+                document.getElementById("preview").src = URL.createObjectURL(file);
+                document.getElementById("result").src = `data:image/png;base64,${data.processed_image}`;
+
+                const unhealthyArea = data.stats.unhealthy;
+                lastUnhealthyArea = unhealthyArea;
+                const fertilizerGrams = unhealthyArea * FERTILIZER_RATE;
+                const fertilizerKg = fertilizerGrams / 1000;
+                const totalArea = width * height;
+
+                document.getElementById("healthyArea").textContent = `${data.stats.healthy.toFixed(2)}m²`;
+                document.getElementById("healthyPercent").textContent = 
+                    `${((data.stats.healthy/totalArea)*100).toFixed(1)}%`;
+                document.getElementById("healthyBar").style.width = `${(data.stats.healthy/totalArea)*100}%`;
+                
+                document.getElementById("mediumArea").textContent = `${data.stats.medium.toFixed(2)}m²`;
+                document.getElementById("mediumPercent").textContent = 
+                    `${((data.stats.medium/totalArea)*100).toFixed(1)}%`;
+                document.getElementById("mediumBar").style.width = `${(data.stats.medium/totalArea)*100}%`;
+                
+                document.getElementById("unhealthyArea").textContent = `${unhealthyArea.toFixed(2)}m²`;
+                document.getElementById("unhealthyPercent").textContent = 
+                    `${((unhealthyArea/totalArea)*100).toFixed(1)}%`;
+                document.getElementById("unhealthyBar").style.width = `${(unhealthyArea/totalArea)*100}%`;
+
+                document.getElementById("totalYield").textContent = `${data.estimated_yield.toFixed(2)} kg`;
+                document.getElementById("totalFertilizer").textContent = 
+                    `${fertilizerGrams.toFixed(1)}g (${fertilizerKg.toFixed(2)}kg)`;
+                
+                if (data.model_type === "ML") {
+                    document.getElementById("modelBadge").classList.remove("d-none");
+                } else {
+                    document.getElementById("modelBadge").classList.add("d-none");
+                }
+                
+                updateModelExplanation(data.model_type === "ML");
+                
+                currentRecordId = data.record_id;
+                
+                // Load history
+                await loadPredictionHistory();
+
+            } catch (error) {
+                showAlert(`Error: ${error.message}`);
+            } finally {
+                analyzeButton.disabled = false;
+                analyzeSpinner.style.display = "none";
+            }
+        }
+        
+        async function saveActualYield() {
+            const actualYield = parseFloat(document.getElementById("actualYield").value);
+            const submitButton = document.getElementById("submitYieldButton");
+            const submitSpinner = document.getElementById("submitSpinner");
+            
+            if (isNaN(actualYield) || actualYield <= 0) {
+                showAlert("Please enter a valid yield amount");
+                return;
+            }
+            
+            if (!currentRecordId) {
+                showAlert("No analysis record found. Please analyze a field first.");
+                return;
+            }
+
+            try {
+                submitButton.disabled = true;
+                submitSpinner.style.display = "inline-block";
+                
+                const response = await fetch("save_actual_yield", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        actualYield: actualYield,
+                        record_id: currentRecordId,
+                        rice_variety: currentRiceVariety,
+                        fertilizer_type: currentFertilizerType
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || "Failed to save data");
+                }
+                
+                document.getElementById("submitStatus").classList.remove("d-none");
+                document.getElementById("actualYield").value = "";
+                
+                setTimeout(async () => {
+                    await loadPredictionHistory();
+                }, 500);
+                
+            } catch (error) {
+                showAlert("Error saving data: " + error.message);
+            } finally {
+                submitButton.disabled = false;
+                submitSpinner.style.display = "none";
+            }
+        }
+        
+        function showAlert(message) {
+            const alert = document.getElementById("validationAlert");
+            document.getElementById("alertMessage").textContent = message;
+            alert.style.display = "block";
+            
+            setTimeout(() => {
+                alert.style.display = "none";
+            }, 5000);
+        }
+        
+        function updateModelExplanation(isML) {
+            document.getElementById("modelExplanation").classList.toggle("d-none", isML);
+            document.getElementById("mlExplanation").classList.toggle("d-none", !isML);
+        }
+        
+        async function loadPredictionHistory() {
+            try {
+                const refreshButton = document.getElementById("refreshHistoryButton");
+                const refreshSpinner = document.getElementById("refreshSpinner");
+                
+                refreshButton.disabled = true;
+                refreshSpinner.style.display = "inline-block";
+                
+                const response = await fetch("/history");
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || "Failed to load history");
+                }
+                
+                const history = await response.json();
+                const container = document.getElementById("predictionHistory");
+                container.innerHTML = "";
+                
+                if (history.length === 0) {
+                    container.innerHTML = `<p class="text-center text-muted my-4" id="emptyHistory">
+                        <i class="bi bi-clock-history"></i><br>
+                        No historical predictions yet
+                    </p>`;
+                    return;
+                }
+                
+                history.forEach(item => {
+                    const date = new Date(item.timestamp);
+                    const formattedDate = `${date.getMonth()+1}/${date.getDate()}/${date.getFullYear()}`;
+                    const time = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    
+                    const card = document.createElement("div");
+                    card.className = "history-card";
+                    
+                    let modelBadge = "";
+                    if (item.model_type === "ML") {
+                        modelBadge = `<span class="badge bg-success float-end">ML Model</span>`;
+                    } else {
+                        modelBadge = `<span class="badge bg-secondary float-end">Linear Model</span>`;
+                    }
+                    
+                    let actualYieldHtml = "";
+                    if (item.actual_yield) {
+                        const diff = item.actual_yield - item.predicted_yield;
+                        // Handle floating-point precision
+                        const roundedDiff = Math.round(diff * 100) / 100; // Round to 2 decimal places
+                        const diffPercent = (roundedDiff / item.predicted_yield) * 100;
+                        const roundedPercent = Math.round(diffPercent * 10) / 10; // Round to 1 decimal place
+                        
+                        // Check if difference is effectively zero
+                        if (Math.abs(roundedDiff) < 0.001) {
+                            actualYieldHtml = `
+                                <div class="mt-2">
+                                    <div class="exact-match">
+                                        <strong>Actual:</strong> ${item.actual_yield.toFixed(2)} kg
+                                        <span class="ms-2">(exact match)</span>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            // Determine sign class and symbol
+                            const diffClass = roundedDiff > 0 ? "text-success" : "text-danger";
+                            const signSymbol = roundedDiff > 0 ? "+" : "";
+                            
+                            actualYieldHtml = `
+                                <div class="mt-2">
+                                    <div class="${diffClass}">
+                                        <strong>Actual:</strong> ${item.actual_yield.toFixed(2)} kg
+                                        <span class="ms-2">(${signSymbol}${roundedDiff.toFixed(2)} kg, ${signSymbol}${Math.abs(roundedPercent).toFixed(1)}%)</span>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        actualYieldHtml = `
+                            <div class="text-muted small mt-2">
+                                Awaiting actual yield submission
+                            </div>
+                        `;
+                    }
+                    
+                    card.innerHTML = `
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>${formattedDate}</strong>
+                                <div class="text-muted small">${time} • ${item.location || 'N/A'}</div>
+                                <div class="text-muted small">${item.rice_variety} • ${item.fertilizer_type}</div>
+                            </div>
+                            ${modelBadge}
+                        </div>
+                        <div class="mt-2">
+                            <div><strong>Predicted:</strong> ${item.predicted_yield.toFixed(2)} kg</div>
+                            ${actualYieldHtml}
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+                
+                // Update chart with new data
+                updateChart(history);
+                
+            } catch (error) {
+                console.error("Error loading history:", error);
+                showAlert("Failed to load prediction history: " + error.message);
+            } finally {
+                const refreshButton = document.getElementById("refreshHistoryButton");
+                const refreshSpinner = document.getElementById("refreshSpinner");
+                if (refreshButton && refreshSpinner) {
+                    refreshButton.disabled = false;
+                    refreshSpinner.style.display = "none";
+                }
+            }
+        }
+        
+        document.getElementById("imageInput").addEventListener("change", function(e) {
+            const file = e.target.files[0];
+            const validTypes = ["image/jpeg", "image/jpg", "image/png"];
+            
+            if (file && !validTypes.includes(file.type.toLowerCase())) {
+                showAlert("Only JPG, JPEG, and PNG files are allowed");
+                e.target.value = "";
+            }
+        });
+        
+        // Initialize chart on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initChart();
+            
+            // Load history if results are visible (page refresh)
+            if (!document.getElementById("results").classList.contains("d-none")) {
+                loadPredictionHistory();
+            }
+        });
+    </script>
+</body>
+</html>
